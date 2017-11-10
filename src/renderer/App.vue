@@ -7,13 +7,38 @@
       enable-resize-watcher
       app
     >
+    <v-container>
+      <v-layout row wrap>
+        <v-flex xs12>
+          <v-switch
+            v-model="checked"
+            label="开关">
+          </v-switch>  
+        </v-flex>
+        <v-flex xs12>
+          <v-select
+            label="COM端口"
+            v-bind:items="coms"
+            v-model="currentCom"
+            item-text="comName"
+            item-value="comName"
+          ></v-select>
+        </v-flex>
+        <v-flex xs12>
+          <v-text-field
+            label="COM端口"
+            v-model="currentCom"
+          ></v-text-field>
+        </v-flex>
+      </v-layout>
+    </v-container>
       <v-list dense>
         <v-list-tile>
           <v-list-tile-content>
-            <v-list-tile-title>Dashboard</v-list-tile-title>
+            <v-list-tile-title>开关</v-list-tile-title>
           </v-list-tile-content>
           <v-list-tile-action>
-            <v-switch v-model="checked"></v-switch>
+            
           </v-list-tile-action>
         </v-list-tile>
         <v-list-tile>
@@ -23,8 +48,12 @@
           <v-list-tile-action>
             <v-select
               label="Select"
-              v-bind:items="items"
-              v-model="e4"
+              v-bind:items="coms"
+              v-model="currentCom"
+              single-line
+              item-text="comName"
+              item-value="comName"
+              auto
             ></v-select>
           </v-list-tile-action>
         </v-list-tile>
@@ -55,23 +84,24 @@
 </template>
 
 <script>
+  import SerialPort from 'serialport'
   export default {
     data: () => ({
       drawer: true,
       checked: true,
-      e4: null,
-      items: [
-        { text: 'State 1' },
-        { text: 'State 2' },
-        { text: 'State 3' },
-        { text: 'State 4' },
-        { text: 'State 5' },
-        { text: 'State 6' },
-        { text: 'State 7' }
-      ]
+      currentCom: null,
+      coms: []
     }),
     props: {
       source: String
+    },
+    mounted () {
+      const that = this
+      SerialPort.list().then(function (ports) {
+        if (ports) {
+          that.coms = ports
+        }
+      })
     }
   }
 </script>

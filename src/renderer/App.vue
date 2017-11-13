@@ -7,63 +7,37 @@
       enable-resize-watcher
       app
     >
-    <v-container>
-      <v-layout row wrap>
-        <v-flex xs12>
-          <v-switch
-            v-model="checked"
-            label="开关">
-          </v-switch>  
-        </v-flex>
-        <v-flex xs12>
-          <v-select
-            label="COM端口"
-            v-bind:items="coms"
-            v-model="currentCom"
-            item-text="comName"
-            item-value="comName"
-            @change="comChange"
-          ></v-select>
-        </v-flex>
-        <v-flex xs10>
-          <v-text-field
-            label="排量"
-            v-model="flow"
-          ></v-text-field>
-        </v-flex>
-        <v-flex xs2>
-          <v-btn flat icon @click="setFlow">
-            <v-icon>check_circle</v-icon>
-          </v-btn>
-        </v-flex>
-      </v-layout>
-    </v-container>
-      <v-list dense>
-        <v-list-tile>
-          <v-list-tile-content>
-            <v-list-tile-title>开关</v-list-tile-title>
-          </v-list-tile-content>
-          <v-list-tile-action>
-            
-          </v-list-tile-action>
-        </v-list-tile>
-        <v-list-tile>
-          <v-list-tile-content>
-            <v-list-tile-title>Com端口</v-list-tile-title>
-          </v-list-tile-content>
-          <v-list-tile-action>
+      <v-container>
+        <v-layout row wrap>
+          <v-flex xs12>
+            <v-switch
+              v-model="checked"
+              label="开关">
+            </v-switch>  
+          </v-flex>
+          <v-flex xs12>
             <v-select
-              label="Select"
+              label="COM端口"
               v-bind:items="coms"
               v-model="currentCom"
-              single-line
               item-text="comName"
               item-value="comName"
-              auto
+              @change="comChange"
             ></v-select>
-          </v-list-tile-action>
-        </v-list-tile>
-      </v-list>
+          </v-flex>
+          <v-flex xs10>
+            <v-text-field
+              label="排量"
+              v-model="flow"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs2>
+            <v-btn flat icon @click="setFlow">
+              <v-icon>check_circle</v-icon>
+            </v-btn>
+          </v-flex>
+        </v-layout>
+      </v-container>
     </v-navigation-drawer>
     <v-toolbar app fixed clipped-left>
       <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>

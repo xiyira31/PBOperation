@@ -22,13 +22,19 @@
             v-model="currentCom"
             item-text="comName"
             item-value="comName"
+            @change="comChange"
           ></v-select>
         </v-flex>
-        <v-flex xs12>
+        <v-flex xs10>
           <v-text-field
-            label="COM端口"
-            v-model="currentCom"
+            label="排量"
+            v-model="flow"
           ></v-text-field>
+        </v-flex>
+        <v-flex xs2>
+          <v-btn flat icon @click="setFlow">
+            <v-icon>check_circle</v-icon>
+          </v-btn>
         </v-flex>
       </v-layout>
     </v-container>
@@ -85,12 +91,16 @@
 
 <script>
   import SerialPort from 'serialport'
+  import ComUtil from './utils/ComUtil'
+  import Comtypes from './utils/Comtypes'
   export default {
     data: () => ({
       drawer: true,
       checked: true,
       currentCom: null,
-      coms: []
+      coms: [],
+      usedCom: null,
+      flow: 0
     }),
     props: {
       source: String
@@ -102,6 +112,46 @@
           that.coms = ports
         }
       })
+    },
+    methods: {
+      comChange: function (value) {
+        this.initCom(value)
+      },
+      initCom: function (comName) {
+        const that = this
+        const com = new SerialPort(comName, { autoOpen: false })
+        com.open(function (err) {
+          if (err) {
+            that.currentCom = null
+            that.closeCom(that.usedCom)
+            return
+          }
+          that.closeCom(that.usedCom)
+          com.on('data', function (data) {
+            console.log('Data:', data.toString())
+          })
+          that.usedCom = com
+        })
+      },
+      closeCom: function (port) {
+        if (port !== null && port !== undefined && port.isOpen === true) {
+          port.close(function () {
+            console.log(port.path + ' is closed.')
+          })
+        }
+      },
+      setFlow: function () {
+        this.sendCommand(this.flow, 'flow')
+      },
+      sendCommand: function (msg, type) {
+        const port = this.usedCom
+        const comType = Comtypes[type]
+        if (port !== null && port !== undefined && port.isOpen === true) {
+          const command = ComUtil.makeCommand(msg, comType.code)
+          console.log(command)
+          port.write(command, 'ascii')
+        }
+      }
     }
   }
 </script>

@@ -1,4 +1,4 @@
-export default Comtypes = {
+const Comtypes = {
   version: {
     name: '查询版本',
     desc: '',
@@ -75,3 +75,4 @@ export default Comtypes = {
     code: '53'
   }
 }
+export default Comtypes

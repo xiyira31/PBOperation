@@ -6,6 +6,7 @@
   "license": null,
   "main": "./dist/electron/main.js",
   "scripts": {
+    "install": "electron-rebuild",
     "build": "node .electron-vue/build.js && electron-builder",
     "build:dir": "node .electron-vue/build.js && electron-builder --dir",
     "build:clean": "cross-env BUILD_TARGET=clean node .electron-vue/build.js",
@@ -57,6 +58,7 @@
   },
   "dependencies": {
     "axios": "^0.16.1",
+    "nedb": "^1.8.0",
     "serialport": "^6.0.4",
     "vue": "^2.4.2",
     "vue-electron": "^1.0.6",

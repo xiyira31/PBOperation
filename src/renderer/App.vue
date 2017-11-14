@@ -1,5 +1,12 @@
 <template>
   <v-app id="inspire" light>
+    <v-snackbar
+      :timeout="timeout"
+      :top="true"
+      v-model="snackbarShow"
+      color="red">
+      未设置COM端口或者COM端口已被占用
+    </v-snackbar>
     <v-navigation-drawer
       clipped
       persistent
@@ -74,6 +81,8 @@
       currentCom: null,
       coms: [],
       usedCom: null,
+      snackbarShow: false,
+      timeout: 2000,
       flow: 0
     }),
     props: {
@@ -124,6 +133,8 @@
           const command = ComUtil.makeCommand(msg, comType.code)
           console.log(command)
           port.write(command, 'ascii')
+        } else {
+          this.snackbarShow = true
         }
       }
     }

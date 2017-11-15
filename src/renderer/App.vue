@@ -111,7 +111,11 @@
           }
           that.closeCom(that.usedCom)
           com.on('data', function (data) {
-            console.log('Data:', data.toString())
+            let doc = {
+              time: new Date(),
+              data: data
+            }
+            that.$db.insert(doc)
           })
           that.usedCom = com
         })

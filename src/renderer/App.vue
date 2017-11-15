@@ -4,8 +4,8 @@
       :timeout="timeout"
       :top="true"
       v-model="snackbarShow"
-      color="red">
-      未设置COM端口或者COM端口已被占用
+      :color="snackbar.color">
+      {{snackbar.msg}}
     </v-snackbar>
     <v-navigation-drawer
       clipped
@@ -18,8 +18,9 @@
         <v-layout row wrap>
           <v-flex xs12>
             <v-switch
-              v-model="checked"
-              label="开关">
+              v-model="stats.on"
+              :label="onOffLabel"
+              @click.native="onOff">
             </v-switch>  
           </v-flex>
           <v-flex xs12>
@@ -34,8 +35,10 @@
           </v-flex>
           <v-flex xs10>
             <v-text-field
-              label="排量"
+              label="排量(L/min)"
               v-model="flow"
+              suffix="L/min"
+              type="number"
             ></v-text-field>
           </v-flex>
           <v-flex xs2>
@@ -43,23 +46,49 @@
               <v-icon>check_circle</v-icon>
             </v-btn>
           </v-flex>
+          <v-flex xs10>
+            <v-text-field
+              label="定时(s)"
+              v-model="timeDelay"
+              suffix="s"
+              type="number"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs2>
+            <v-btn flat icon @click="setTimeDelay">
+              <v-icon>check_circle</v-icon>
+            </v-btn>
+          </v-flex>
+          <v-flex xs10>
+            <v-text-field
+              label="体积(L)"
+              v-model="volumn"
+              suffix="L"
+              type="number"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs2>
+            <v-btn flat icon @click="setVolumn">
+              <v-icon>check_circle</v-icon>
+            </v-btn>
+          </v-flex>
+          <v-flex xs12>
+            <v-btn block @click="setVolumn" :disabled="usedCom === null">
+              读取压力
+            </v-btn>
+          </v-flex>
         </v-layout>
       </v-container>
     </v-navigation-drawer>
     <v-toolbar app fixed clipped-left>
       <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
-      <v-toolbar-title>Application</v-toolbar-title>
+      <v-toolbar-title>{{appTitle}}</v-toolbar-title>
     </v-toolbar>
     <main>
       <v-content>
         <v-container fluid fill-height>
           <v-layout justify-center align-center>
-            <v-tooltip right>
-              <v-btn icon large :href="source" target="_blank" slot="activator">
-                <v-icon large>code</v-icon>
-              </v-btn>
-              <span>Source</span>
-            </v-tooltip>
+            
           </v-layout>
         </v-container>
       </v-content>
@@ -76,27 +105,71 @@
   import Comtypes from './utils/Comtypes'
   export default {
     data: () => ({
+      appTitle: 'PB平流泵操作软件',
       drawer: true,
-      checked: true,
       currentCom: null,
       coms: [],
       usedCom: null,
       snackbarShow: false,
       timeout: 2000,
-      flow: 0
+      flow: 10,
+      timeDelay: 120,
+      volumn: 10,
+      stats: {
+        on: false
+      },
+      snackbar: {
+        msg: '',
+        color: 'blue'
+      }
     }),
-    props: {
-      source: String
+    computed: {
+      onOffLabel: function () {
+        if (this.stats.on) {
+          return '开'
+        } else {
+          return '关'
+        }
+      },
+      snackMsgs: function () {
+        return {
+          comErr: {
+            msg: '未设置COM端口或者COM端口已被占用',
+            color: 'red'
+          },
+          setFlow: {
+            msg: '成功设置流量为' + this.flow + 'L/min',
+            color: 'blue'
+          },
+          setVolumn: {
+            msg: '成功设置定排量为' + this.volumn + 'L',
+            color: 'blue'
+          },
+          setTimeDelay: {
+            msg: '成功设置定时为' + this.timeDelay + 's',
+            color: 'blue'
+          }
+        }
+      }
     },
     mounted () {
       const that = this
       SerialPort.list().then(function (ports) {
         if (ports) {
+          console.log(ports)
           that.coms = ports
         }
       })
     },
     methods: {
+      onOff: function () {
+        let on = this.stats.on
+        if (on) {
+          this.sendCommand('', Comtypes.start)
+        } else {
+          this.sendCommand('', Comtypes.stop)
+        }
+      },
       comChange: function (value) {
         this.initCom(value)
       },
@@ -128,18 +201,53 @@
         }
       },
       setFlow: function () {
-        this.sendCommand(this.flow, 'flow')
+        const that = this
+        that.sendCommand(that.flow, Comtypes.flow).then(() => {
+          that.showSnackbar(that.snackMsgs.setFlow)
+        }).catch((err) => {
+          if (err) {
+            console.log(err)
+          }
+        })
       },
-      sendCommand: function (msg, type) {
-        const port = this.usedCom
-        const comType = Comtypes[type]
-        if (port !== null && port !== undefined && port.isOpen === true) {
-          const command = ComUtil.makeCommand(msg, comType.code)
-          console.log(command)
-          port.write(command, 'ascii')
-        } else {
-          this.snackbarShow = true
-        }
+      setVolumn: function () {
+        const that = this
+        that.sendCommand(that.flow, Comtypes.volumn).then(() => {
+          that.showSnackbar(that.snackMsgs.setVolumn)
+        }).catch((err) => {
+          if (err) {
+            console.log(err)
+          }
+        })
+      },
+      setTimeDelay: function () {
+        const that = this
+        that.sendCommand(that.flow, Comtypes.destTime).then(() => {
+          that.showSnackbar(that.snackMsgs.setTimeDelay)
+        }).catch((err) => {
+          if (err) {
+            console.log(err)
+          }
+        })
+      },
+      sendCommand: function (msg, comType) {
+        const that = this
+        return new Promise(function (resolve, reject) {
+          const port = that.usedCom
+          if (port !== null && port !== undefined && port.isOpen === true) {
+            const command = ComUtil.makeCommand(msg, comType.code)
+            console.log(command)
+            port.write(command, 'ascii')
+            resolve()
+          } else {
+            that.showSnackbar(that.snackMsgs.comErr)
+            reject(new Error('Com连接失败'))
+          }
+        })
+      },
+      showSnackbar: function (type) {
+        this.snackbar = type
+        this.snackbarShow = true
       }
     }
   }

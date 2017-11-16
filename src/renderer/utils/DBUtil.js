@@ -21,6 +21,24 @@ const DBUtil = {
         console.log(err)
       }
     })
+  },
+  savePressure (db, updateDoc, value) {
+    db.update(updateDoc, {$push: {data: value}}, {}, function (err) {
+      if (err) {
+        console.log(err)
+      }
+    })
+  },
+  dbCount (db, doc) {
+    return new Promise(function (resolve, reject) {
+      db.count(doc, function (err, count) {
+        if (err) {
+          reject(err)
+          return
+        }
+        resolve(count)
+      })
+    })
   }
 }
 export default DBUtil

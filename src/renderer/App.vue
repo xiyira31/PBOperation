@@ -7,11 +7,21 @@
       :color="snackbar.color">
       {{snackbar.msg}}
     </v-snackbar>
+    <v-dialog v-model="dialog" presistent max-width="290">
+      <v-card>
+        <v-card-title class="headline">已有该实验名称</v-card-title>
+        <v-card-text>选择是将会继续在该实验下读取数据，选择否则会退出。</v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="green darken-1" flat="flat" @click.native="dialog = false">否</v-btn>
+          <v-btn color="green darken-1" flat="flat" @click.native="setLoadInterval();dialog = false">是</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-navigation-drawer
-      clipped
-      persistent
       v-model="drawer"
       enable-resize-watcher
+      left
       app
     >
       <v-container>
@@ -73,8 +83,20 @@
             </v-btn>
           </v-flex>
           <v-flex xs12>
-            <v-btn block @click="setVolumn" :disabled="usedCom === null">
+            <v-text-field
+              label="实验名称"
+              v-model="savedName"
+              :disabled="toSave"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs12>
+            <v-btn block @click="loadPres" :disabled="usedCom === null || savedName === '' || toSave === true">
               读取压力
+            </v-btn>
+          </v-flex>
+          <v-flex xs12>
+            <v-btn block @click.native="stopLoad" :disabled="!toSave">
+              暂停读取
             </v-btn>
           </v-flex>
         </v-layout>
@@ -87,8 +109,24 @@
     <main>
       <v-content>
         <v-container fluid fill-height>
-          <v-layout justify-center align-center>
-            
+          <v-layout wrap>
+            <v-navigation-drawer
+              clipped
+              right
+              v-model="drawer"
+              enable-resize-watcher
+              app
+            >
+              <v-flex xs12>
+                <data-list :histories="histories"></data-list>
+              </v-flex>
+            </v-navigation-drawer>
+            <v-flex xs12>
+              <sub-header-view :subTitle="savedName" :currentPres="currentPres" :currentTime="currentTime"></sub-header-view>
+            </v-flex>
+            <v-flex xs12 fill-height>
+              <chart-view :charData="items" id="test"></chart-view>
+            </v-flex>
           </v-layout>
         </v-container>
       </v-content>
@@ -103,7 +141,17 @@
   import SerialPort from 'serialport'
   import ComUtil from './utils/ComUtil'
   import Comtypes from './utils/Comtypes'
+  import datalist from './components/datalist'
+  import DBUtil from './utils/DBUtil'
+  import subHeaderView from './components/subHeaderView'
+  import chartView from './components/chartView'
+  import moment from 'moment'
   export default {
+    components: {
+      'data-list': datalist,
+      'sub-header-view': subHeaderView,
+      'chart-view': chartView
+    },
     data: () => ({
       appTitle: 'PB平流泵操作软件',
       drawer: true,
@@ -121,7 +169,15 @@
       snackbar: {
         msg: '',
         color: 'blue'
-      }
+      },
+      items: [],
+      toSave: false,
+      savedName: '',
+      intervalRead: null,
+      dialog: false,
+      currentTime: '',
+      currentPres: 0,
+      histories: []
     }),
     computed: {
       onOffLabel: function () {
@@ -148,6 +204,10 @@
           setTimeDelay: {
             msg: '成功设置定时为' + this.timeDelay + 's',
             color: 'blue'
+          },
+          inputName: {
+            msg: '请输入实验名称',
+            color: 'red'
           }
         }
       }
@@ -156,12 +216,26 @@
       const that = this
       SerialPort.list().then(function (ports) {
         if (ports) {
-          console.log(ports)
           that.coms = ports
         }
       })
+      setInterval(function () {
+        const date = moment()
+        that.currentTime = date.format('HH : mm : ss')
+      }, 1000)
+      that.loadHistories()
     },
     methods: {
+      loadHistories: function () {
+        const that = this
+        that.$db.find({ isExper: true }).sort({ start: 1 }).exec(function (err, docs) {
+          if (err) {
+            console.log(err)
+            return
+          }
+          that.histories = docs
+        })
+      },
       onOff: function () {
         let on = this.stats.on
         if (on) {
@@ -184,11 +258,18 @@
           }
           that.closeCom(that.usedCom)
           com.on('data', function (data) {
+            let pres = data.toString()
+            pres = pres.substring(7)
+            pres = Number(pres)
+            that.currentPres = pres
             let doc = {
               time: new Date(),
-              data: data
+              pres: pres
             }
-            that.$db.insert(doc)
+            that.items.push(doc)
+            if (that.toSave && that.savedName) {
+              DBUtil.savePressure(that.$db, {name: that.savedName}, doc)
+            }
           })
           that.usedCom = com
         })
@@ -248,6 +329,53 @@
       showSnackbar: function (type) {
         this.snackbar = type
         this.snackbarShow = true
+      },
+      loadPres: function () {
+        const that = this
+        const savedName = that.savedName
+        if (savedName) {
+          DBUtil.dbCount(that.$db, {name: savedName}).then((count) => {
+            if (count > 0) {
+              that.dialog = true
+            } else {
+              that.insertDoc()
+            }
+          })
+        }
+      },
+      stopLoad: function () {
+        const that = this
+        clearInterval(that.intervalRead)
+        that.toSave = false
+      },
+      setLoadInterval () {
+        const that = this
+        that.intervalRead = setInterval(function () {
+          that.sendCommand('', Comtypes.readPrs).catch(function (err) {
+            if (err) {
+              console.log(err)
+            }
+            clearInterval(that.intervalRead)
+          })
+        }, 1000)
+        that.toSave = true
+      },
+      insertDoc () {
+        const that = this
+        that.$db.insert({
+          name: that.savedName,
+          start: new Date(),
+          isExper: true,
+          data: []
+        }, (err, doc) => {
+          if (err) {
+            console.log(err)
+            return
+          }
+          if (doc) {
+            that.setLoadInterval()
+          }
+        })
       }
     }
   }

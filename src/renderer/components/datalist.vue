@@ -20,7 +20,7 @@
                   <v-icon color="blue">input</v-icon>
                 </v-btn>
                 <v-btn icon ripple>
-                  <v-icon color="red">delete</v-icon>
+                  <v-icon color="gray">delete</v-icon>
                 </v-btn>
               </v-list-tile-action>
             </v-list-tile>

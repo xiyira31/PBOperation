@@ -14,19 +14,24 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" flat="flat" @click.native="dialog = false">否</v-btn>
-          <v-btn color="green darken-1" flat="flat" @click.native="setLoadInterval();dialog = false">是</v-btn>
+          <v-btn color="green darken-1" flat="flat" @click.native="startLoad();dialog = false">是</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
     <v-navigation-drawer
+      fixed
       v-model="drawer"
       enable-resize-watcher
+      clipped
       left
       app
     >
       <v-container>
         <v-layout row wrap>
-          <v-flex xs12>
+          <v-flex xs4>
+            平流泵开关 
+          </v-flex>
+          <v-flex xs8>
             <v-switch
               v-model="stats.on"
               :label="onOffLabel"
@@ -105,6 +110,8 @@
     <v-toolbar app fixed clipped-left>
       <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
       <v-toolbar-title>{{appTitle}}</v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-toolbar-side-icon @click.stop="rightDrawer = !rightDrawer"></v-toolbar-side-icon>
     </v-toolbar>
     <main>
       <v-content>
@@ -113,12 +120,12 @@
             <v-navigation-drawer
               clipped
               right
-              v-model="drawer"
+              v-model="rightDrawer"
               enable-resize-watcher
               app
             >
               <v-flex xs12>
-                <data-list :histories="histories"></data-list>
+                <data-list :histories="histories" :isWorking="toSave" v-on:update="updateHistories" v-on:load="inputData"></data-list>
               </v-flex>
             </v-navigation-drawer>
             <v-flex xs12>
@@ -155,6 +162,7 @@
     data: () => ({
       appTitle: 'PB平流泵操作软件',
       drawer: true,
+      rightDrawer: true,
       currentCom: null,
       coms: [],
       usedCom: null,
@@ -177,7 +185,8 @@
       dialog: false,
       currentTime: '',
       currentPres: 0,
-      histories: []
+      histories: [],
+      readingData: false
     }),
     computed: {
       onOffLabel: function () {
@@ -223,12 +232,12 @@
         const date = moment()
         that.currentTime = date.format('HH : mm : ss')
       }, 1000)
-      that.loadHistories()
+      that.updateHistories()
     },
     methods: {
-      loadHistories: function () {
+      updateHistories: function () {
         const that = this
-        that.$db.find({ isExper: true }).sort({ start: 1 }).exec(function (err, docs) {
+        that.$db.find({ isExper: true }).sort({ start: 0 }).exec(function (err, docs) {
           if (err) {
             console.log(err)
             return
@@ -257,11 +266,21 @@
             return
           }
           that.closeCom(that.usedCom)
-          com.on('data', function (data) {
-            let pres = data.toString()
-            pres = pres.substring(7)
-            pres = Number(pres)
-            that.currentPres = pres
+          that.usedCom = com
+        })
+      },
+      onReadData: function (com) {
+        const that = this
+        that.readingData = true
+        com.on('data', function (data) {
+          let pres = data.toString()
+          pres = pres.substring(7)
+          pres = Number(pres)
+          if (Number.isNaN(pres)) {
+            return
+          }
+          that.currentPres = pres
+          if (that.readingData) {
             let doc = {
               time: new Date(),
               pres: pres
@@ -270,9 +289,11 @@
             if (that.toSave && that.savedName) {
               DBUtil.savePressure(that.$db, {name: that.savedName}, doc)
             }
-          })
-          that.usedCom = com
+          }
         })
+      },
+      unReadData: function () {
+        this.readingData = false
       },
       closeCom: function (port) {
         if (port !== null && port !== undefined && port.isOpen === true) {
@@ -339,14 +360,21 @@
               that.dialog = true
             } else {
               that.insertDoc()
+              that.startLoad()
             }
           })
         }
       },
+      startLoad: function () {
+        this.setLoadInterval()
+        this.onReadData(this.usedCom)
+      },
       stopLoad: function () {
         const that = this
         clearInterval(that.intervalRead)
+        that.unReadData()
         that.toSave = false
+        that.updateHistories()
       },
       setLoadInterval () {
         const that = this
@@ -367,14 +395,27 @@
           start: new Date(),
           isExper: true,
           data: []
-        }, (err, doc) => {
+        }, (err) => {
+          if (err) {
+            console.log(err)
+          }
+        })
+      },
+      inputData (name) {
+        const that = this
+        if (that.toSave) {
+          console.log('正在工作,无法导入历史数据')
+          return
+        }
+        that.$db.findOne({name: name}, function (err, doc) {
           if (err) {
             console.log(err)
             return
           }
-          if (doc) {
-            that.setLoadInterval()
+          if (doc.data && doc.data.length > 0) {
+            that.items = doc.data
           }
+          that.savedName = name
         })
       }
     }

@@ -41,7 +41,7 @@
         this.chart = new G2.Chart({
           id: this.id,
           forceFit: true,
-          height: 550
+          height: 600
         })
         this.chart.source(data, {
           time: {

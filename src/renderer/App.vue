@@ -118,7 +118,6 @@
         <v-container fluid fill-height>
           <v-layout wrap>
             <v-navigation-drawer
-              clipped
               right
               v-model="rightDrawer"
               enable-resize-watcher
@@ -139,7 +138,7 @@
       </v-content>
     </main>
     <v-footer app fixed>
-      <span>&copy; 2017</span>
+      <span>中国石油集团川庆钻探工程有限公司井下作业公司&copy; 2017</span>
     </v-footer>
   </v-app>
 </template>

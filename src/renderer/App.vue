@@ -107,11 +107,11 @@
         </v-layout>
       </v-container>
     </v-navigation-drawer>
-    <v-toolbar app fixed clipped-left>
-      <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
+    <v-toolbar app fixed clipped-left style="-webkit-app-region: drag">
+      <v-toolbar-side-icon @click.stop="drawer = !drawer" style="-webkit-app-region: no-drag"></v-toolbar-side-icon>
       <v-toolbar-title>{{appTitle}}</v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-toolbar-side-icon @click.stop="rightDrawer = !rightDrawer"></v-toolbar-side-icon>
+      <v-toolbar-side-icon @click.stop="rightDrawer = !rightDrawer" style="-webkit-app-region: no-drag"></v-toolbar-side-icon>
     </v-toolbar>
     <main>
       <v-content>

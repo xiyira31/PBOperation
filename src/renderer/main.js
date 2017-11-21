@@ -9,6 +9,8 @@ import store from './store'
 import Nedb from 'nedb'
 import DBUtil from './utils/DBUtil'
 
+import 'material-design-icons/iconfont/material-icons.css'
+
 Vue.use(Vuetify)
 if (!process.env.IS_WEB) Vue.use(require('vue-electron'))
 Vue.http = Vue.prototype.$http = axios

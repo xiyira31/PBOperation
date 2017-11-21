@@ -13,7 +13,7 @@
         </v-card>
       </v-dialog>
       <v-flex xs12>
-        <v-list>
+        <v-list two-line>
           <v-subheader>
             实验历史
           </v-subheader>
@@ -30,6 +30,9 @@
                 <v-btn icon ripple :disabled="isWorking" @click.native="$emit('load', history.name)">
                   <v-icon color="blue">input</v-icon>
                 </v-btn>
+                <v-btn icon ripple @click.native="exportCSV(history.name)" :disabled="isWorking">
+                  <v-icon color="blue">cloud_download</v-icon>
+                </v-btn>
                 <v-btn icon ripple @click.native="chooseToRemove(history.name)" :disabled="isWorking">
                   <v-icon color="gray">delete</v-icon>
                 </v-btn>
@@ -45,6 +48,8 @@
 
 <script>
 import moment from 'moment'
+import fs from 'fs'
+import electron from 'electron'
 export default {
   data () {
     return {
@@ -82,6 +87,31 @@ export default {
         }
       })
       that.toDeletedName = ''
+    },
+    exportCSV (name) {
+      const that = this
+      that.$db.findOne({name: name}, function (err, doc) {
+        if (err) {
+          console.log(err)
+          return
+        }
+        if (doc && doc.data.length > 0) {
+          const {dialog} = electron.remote
+          dialog.showSaveDialog(null, {
+            title: '存储',
+            defaultPath: name + '.csv'
+          }, function (filename) {
+            let data = ''
+            doc.data.forEach(element => {
+              let time = moment(element.time)
+              data += time.format('YYYY-MM-DD HH:mm:ss') + ',' + element.pres + '\n'
+            })
+            fs.writeFile(filename, data, function () {
+              console.log('保存成功')
+            })
+          })
+        }
+      })
     }
   }
 }
